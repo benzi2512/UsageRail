@@ -1,0 +1,28 @@
+# Local build, editor, and macOS metadata
+.build/
+.swiftpm/
+.DS_Store
+._*
+*.xcuserstate
+xcuserdata/
+
+# Credentials and private runtime state never belong in the repository
+.env
+.env.*
+.credentials.json
+credentials.json
+claude-connection.json
+snapshots.json
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Built apps, local validation records, scratch work and recoverable trash
+outputs/
+*.app/
+work/
+tmp/
+trash/
+Trash/
+*.noindex/
