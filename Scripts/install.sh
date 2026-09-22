@@ -18,8 +18,8 @@ if ! command -v swift >/dev/null 2>&1; then
 fi
 
 echo "Building UsageRail (the first build takes a minute or two)…"
-built="$("$script_directory/build-release.sh" 2>/dev/null | grep -E '/UsageRail\.app$' | tail -n 1)"
-if [[ -z "$built" || ! -d "$built" ]]; then
+if ! built="$("$script_directory/build-release.sh" 2>/dev/null | grep -E '/UsageRail\.app$' | tail -n 1)" \
+    || [[ -z "$built" || ! -d "$built" ]]; then
     echo "The build failed. Run ./Scripts/build-release.sh to see the error." >&2; exit 1
 fi
 
@@ -28,11 +28,13 @@ mkdir -p "$destination"
 target="$destination/UsageRail.app"
 
 # Quit a running copy so the new one can take its place.
-osascript -e 'tell application id "com.usagerail.app" to quit' >/dev/null 2>&1 || true
-for _ in {1..20}; do
-    pgrep -x UsageRail >/dev/null 2>&1 || break
-    sleep 0.25
-done
+if pgrep -x UsageRail >/dev/null 2>&1; then
+    osascript -e 'tell application id "com.usagerail.app" to quit' >/dev/null 2>&1 || true
+    for _ in {1..20}; do
+        pgrep -x UsageRail >/dev/null 2>&1 || break
+        sleep 0.25
+    done
+fi
 
 if [[ -d "$target" ]]; then
     mv "$target" "$HOME/.Trash/UsageRail $(date '+%Y-%m-%d %H.%M.%S').app"
@@ -40,7 +42,7 @@ if [[ -d "$target" ]]; then
 fi
 ditto "$built" "$target"
 # The staging folder belongs to this build only.
-rm -rf "${built:h}"
+[[ "${built:h}" == /tmp/usagerail-release.*.noindex ]] && rm -rf "${built:h}"
 
 open "$target"
 echo "Installed $target. Settings opens so you can connect your providers."
