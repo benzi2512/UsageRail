@@ -1,6 +1,7 @@
 import AppKit
 import CoreServices
 import Network
+import ServiceManagement
 import UsageCore
 
 @MainActor
@@ -130,6 +131,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
 
             if !isDemo {
+                keepLoginItemWithThisCopy()
                 let notifications = NSWorkspace.shared.notificationCenter
                 for name in [NSWorkspace.willSleepNotification, NSWorkspace.screensDidSleepNotification,
                              NSWorkspace.sessionDidResignActiveNotification] {
@@ -272,6 +274,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             self.bridgeDeliveryTask = nil
         }
+    }
+
+    /// Launch at login is registered for one copy of the app. When UsageRail runs from a new
+    /// place (for example after moving to /Applications), point the login item at this copy so
+    /// an old copy never starts at login. Development runs outside an .app bundle are ignored.
+    private func keepLoginItemWithThisCopy() {
+        let bundle = Bundle.main.bundleURL.standardizedFileURL
+        guard bundle.pathExtension == "app" else { return }
+        let defaults = UserDefaults.standard
+        let key = "loginItemBundlePath"
+        guard defaults.string(forKey: key) != bundle.path else { return }
+        let service = SMAppService.mainApp
+        if service.status == .enabled {
+            do {
+                try service.unregister()
+                try service.register()
+            } catch { return }
+        }
+        defaults.set(bundle.path, forKey: key)
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }

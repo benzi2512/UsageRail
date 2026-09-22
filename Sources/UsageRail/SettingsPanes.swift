@@ -430,7 +430,7 @@ final class CodexSetupSection: NSObject, ProviderSetupSection {
         self.host = host
         openButton = SettingsUI.button("Open ChatGPT", target: nil, action: #selector(openChatGPT))
         let row = SettingsRowView(title: "ChatGPT app",
-                                  subtitle: "Sign in to the ChatGPT app with the account you use for Codex — UsageRail detects it automatically.",
+                                  subtitle: "Sign in to the ChatGPT app, or run codex login for the Codex CLI. UsageRail detects it automatically.",
                                   accessories: [openButton])
         view = SettingsUI.column([SettingsGroupView(rows: [row])])
         super.init()

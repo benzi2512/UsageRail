@@ -1,81 +1,5 @@
 import Darwin
 import Foundation
-import Security
-
-/// Finds Claude Code where its installers put it and runs it only when Anthropic signed it, so
-/// any Claude Code version works without trusting an unknown binary.
-public enum ClaudeExecutable {
-    public static let teamIdentifier = "Q6L2SF6YDW"
-    public static let signingIdentifier = "com.anthropic.claude-code"
-    static let requirement = "anchor apple generic and identifier \"\(signingIdentifier)\" and certificate leaf[subject.OU] = \"\(teamIdentifier)\""
-    private static let verified = VerifiedExecutables()
-
-    /// Launchers in the order a default shell finds them: Homebrew or npm on Apple silicon,
-    /// then Intel, then the native installer. Each may be a symlink to the real binary.
-    public static func candidatePaths(home: String = FileManager.default.homeDirectoryForCurrentUser.path) -> [String] {
-        ["/opt/homebrew/bin/claude", "/usr/local/bin/claude", home + "/.local/bin/claude",
-         "/opt/homebrew/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe",
-         "/usr/local/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe"]
-    }
-
-    /// The first installed launcher, used for the sign-in command UsageRail copies. It is
-    /// only located here; `verifiedURL()` checks the signature before anything runs.
-    public static func installedLauncher(fileManager: FileManager = .default) -> URL? {
-        candidatePaths().first { fileManager.isExecutableFile(atPath: $0) }.map { URL(fileURLWithPath: $0) }
-    }
-
-    /// The real binary behind the first launcher that is Anthropic-signed and safely owned.
-    static func verifiedURL() throws -> URL {
-        var found = false
-        for path in candidatePaths() where FileManager.default.isExecutableFile(atPath: path) {
-            found = true
-            let binary = URL(fileURLWithPath: path).resolvingSymlinksInPath()
-            if isTrusted(binary) { return binary }
-        }
-        throw ConnectorError.unavailable(found
-            ? "Claude Code signature check failed. UsageRail runs only Claude Code signed by Anthropic."
-            : "Claude Code is not installed. UsageRail never installs or updates it.")
-    }
-
-    /// Owned by you or root, not writable by others, and signed by Anthropic. Strict validation
-    /// hashes the ~300 MB binary, so it runs once per file identity; an update re-checks.
-    public static func isTrusted(_ binary: URL) -> Bool {
-        let path = binary.path
-        var info = stat()
-        guard lstat(path, &info) == 0, info.st_mode & S_IFMT == S_IFREG,
-              info.st_uid == getuid() || info.st_uid == 0, info.st_mode & 0o022 == 0,
-              info.st_size <= 512 * 1024 * 1024, let before = ExecutableIdentity(path: path) else { return false }
-        if verified.contains(before) { return true }
-        guard hasAnthropicSignature(binary) else { return false }
-        if ExecutableIdentity(path: path) == before { verified.store(before) }
-        return true
-    }
-
-    static func hasAnthropicSignature(_ binary: URL) -> Bool {
-        var code: SecStaticCode?
-        var requirement: SecRequirement?
-        guard SecStaticCodeCreateWithPath(binary as CFURL, [], &code) == errSecSuccess, let code,
-              SecRequirementCreateWithString(Self.requirement as CFString, [], &requirement) == errSecSuccess, let requirement else {
-            return false
-        }
-        let flags = SecCSFlags(rawValue: kSecCSStrictValidate | kSecCSCheckAllArchitectures)
-        return SecStaticCodeCheckValidity(code, flags, requirement) == errSecSuccess
-    }
-}
-
-/// Identities of binaries that already passed signature validation.
-final class VerifiedExecutables: @unchecked Sendable {
-    private let lock = NSLock()
-    private var identities: [ExecutableIdentity] = []
-
-    func contains(_ candidate: ExecutableIdentity) -> Bool { lock.withLock { identities.contains(candidate) } }
-    func store(_ candidate: ExecutableIdentity) {
-        lock.withLock {
-            identities.removeAll { $0.device == candidate.device && $0.inode == candidate.inode }
-            identities = Array((identities + [candidate]).suffix(4))
-        }
-    }
-}
 
 /// Reads Claude plan limits through Claude Code's control protocol with a private profile.
 /// Two control packets only; no prompt, tool, plugin, model call or persistent child. UsageRail
@@ -84,7 +8,9 @@ public struct ClaudeConnector: UsageConnector {
     public let provider: ProviderID = .claude
     /// Folder name for the profile Settings can create, inside UsageRail's Application Support.
     public static let defaultProfileName = "Claude usage profile"
-    public init() {}
+    /// A specific Claude Code launcher to use instead of searching (troubleshooting).
+    private let executableURL: URL?
+    public init(executableURL: URL? = nil) { self.executableURL = executableURL }
 
     public static var hasProfileConfiguration: Bool {
         guard let url = try? UsagePaths.applicationSupport().appendingPathComponent("claude-connection.json") else { return false }
@@ -189,7 +115,8 @@ public struct ClaudeConnector: UsageConnector {
 
     private func refreshBlocking() throws -> UsageSnapshot {
         let profile = try Self.configuredProfile()
-        let executable = try ClaudeExecutable.verifiedURL()
+        let claude = ClaudeExecutable.standard
+        let executable = try executableURL.map { try claude.verified($0) } ?? claude.verifiedURL()
         let process = Process()
         let input = Pipe()
         let output = Pipe()

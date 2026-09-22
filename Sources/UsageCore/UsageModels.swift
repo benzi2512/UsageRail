@@ -323,7 +323,7 @@ public struct ProviderState: Codable, Equatable, Sendable {
         let reason = (message ?? "").lowercased()
         if reason.contains("not installed") {
             return provider == .codex
-                ? "Install the ChatGPT desktop app and sign in, then retry."
+                ? "Install the ChatGPT desktop app or the Codex CLI and sign in, then retry."
                 : "Install Claude Code, sign in with the command from Settings, then retry."
         }
         if reason.contains("signature") || reason.contains("changed") {

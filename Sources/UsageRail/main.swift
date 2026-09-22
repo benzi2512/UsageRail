@@ -3,13 +3,17 @@ import UsageCore
 
 /// Troubleshooting: `UsageRail --check-usage=<codex|claude|copilot|kie|runpod>` runs one real
 /// check with the saved setup and prints the reading as JSON, or the error. Secrets never print.
+/// For Codex and Claude, `--executable=<path>` checks one specific install instead of searching;
+/// it still has to be signed by its publisher.
 let checkArgument = ProcessInfo.processInfo.arguments.first { $0.hasPrefix("--check-usage=") }
     ?? (ProcessInfo.processInfo.arguments.contains("--check-claude-usage") ? "--check-usage=claude" : nil)
 if let checkArgument {
     let name = String(checkArgument.dropFirst("--check-usage=".count))
+    let executable = ProcessInfo.processInfo.arguments.first { $0.hasPrefix("--executable=") }
+        .map { URL(fileURLWithPath: String($0.dropFirst("--executable=".count))) }
     let connector: (any UsageConnector)? = switch ProviderID(rawValue: name) {
-    case .codex?: CodexConnector()
-    case .claude?: ClaudeConnector()
+    case .codex?: CodexConnector(executableURL: executable)
+    case .claude?: ClaudeConnector(executableURL: executable)
     case .copilot?: CopilotConnector(settings: { SettingsStore().load() })
     case .kie?: KieConnector()
     case .runpod?: RunpodConnector()

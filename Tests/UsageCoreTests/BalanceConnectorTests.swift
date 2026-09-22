@@ -140,3 +140,42 @@ final class StubURLProtocol: URLProtocol, @unchecked Sendable {
     #expect(ClaudeConnector.shellQuoted("it's here") == #"'it'\''s here'"#)
     #expect(ClaudeConnector.shellQuoted("") == "''")
 }
+
+@Test func codexIsLookedUpInChatGPTFirstThenTheCLI() {
+    let paths = CodexExecutable.candidatePaths(home: "/Users/example")
+    #expect(Array(paths.prefix(2)) == ["/Applications/ChatGPT.app/Contents/Resources/codex",
+                                       "/Users/example/Applications/ChatGPT.app/Contents/Resources/codex"])
+    #expect(paths.contains("/opt/homebrew/bin/codex"))
+    #expect(paths.contains { $0.hasSuffix("/vendor/aarch64-apple-darwin/bin/codex") })
+    #expect(CodexExecutable.standard.requirement
+        == #"anchor apple generic and identifier "codex" and certificate leaf[subject.OU] = "2DC432GLL2""#)
+}
+
+@Test func missingAndUnsignedCLIsFailWithDistinctMessages() throws {
+    let folder = FileManager.default.temporaryDirectory.appendingPathComponent("usagerail-cli-test-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
+    defer { try? FileManager.default.removeItem(at: folder) }
+    let launcher = folder.appendingPathComponent("codex")
+    let missing = SignedExecutable(product: "Codex", signingIdentifier: "codex", teamIdentifier: "2DC432GLL2",
+                                   candidatePaths: [launcher.path])
+    #expect(throws: ConnectorError.unavailable("Codex is not installed. UsageRail never installs or updates it.")) {
+        try missing.verifiedURL()
+    }
+    // A JS launcher (like npm's codex.js) or any unsigned file is found but never run.
+    try Data("#!/usr/bin/env node\n".utf8).write(to: launcher)
+    try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: launcher.path)
+    let failure = ConnectorError.unavailable("Codex signature check failed. UsageRail runs only Codex signed by its publisher.")
+    #expect(throws: failure) { try missing.verifiedURL() }
+    #expect(throws: failure) { try missing.verified(launcher) }
+    // A symlink is judged by the file it points to.
+    let link = folder.appendingPathComponent("codex-link")
+    try FileManager.default.createSymbolicLink(at: link, withDestinationURL: launcher)
+    #expect(missing.trustedBinary(behind: link) == nil)
+}
+
+@Test func aBinaryTrustedForOneVendorIsNotTrustedForAnother() {
+    let chatGPTCodex = URL(fileURLWithPath: "/Applications/ChatGPT.app/Contents/Resources/codex")
+    guard FileManager.default.isExecutableFile(atPath: chatGPTCodex.path) else { return }
+    #expect(CodexExecutable.standard.isTrusted(chatGPTCodex))
+    #expect(!ClaudeExecutable.isTrusted(chatGPTCodex))
+}

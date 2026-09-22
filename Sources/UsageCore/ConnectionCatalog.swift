@@ -3,7 +3,7 @@ import Foundation
 /// How a provider is connected from Settings. The UI builds each setup pane from this,
 /// so supporting a new provider is mostly a new `ConnectionCatalog` entry.
 public enum ConnectionSetupKind: Equatable, Sendable {
-    /// Detected from the signed-in ChatGPT desktop app (Codex).
+    /// Detected from the signed-in ChatGPT desktop app or Codex CLI.
     case chatGPTApp
     /// A private Claude Code profile folder, created or chosen in Settings; only its path is stored.
     case claudeProfile
@@ -106,9 +106,9 @@ public enum ConnectionCatalog {
     public static let builtIn: [ConnectionCatalogEntry] = [
         ConnectionCatalogEntry(
             id: .provider(.codex), title: ProviderID.codex.displayName,
-            summary: "Your Codex limits, read from the ChatGPT desktop app.",
+            summary: "Your Codex limits, read from the ChatGPT desktop app or the Codex CLI.",
             setup: .chatGPTApp,
-            credentialLocation: "Your ChatGPT app sign-in. UsageRail stores no credential.",
+            credentialLocation: "Your ChatGPT or Codex CLI sign-in. UsageRail stores no credential.",
             offersResets: true),
         ConnectionCatalogEntry(
             id: .provider(.claude), title: ProviderID.claude.displayName,

@@ -1,12 +1,12 @@
 import Foundation
-import Security
 
 public struct CodexConnector: UsageConnector, Sendable {
     public let provider: ProviderID = .codex
     private let executableURL: URL?
     private let timeout: TimeInterval
 
-    public init(executableURL: URL? = CodexConnector.defaultExecutableURL(), timeout: TimeInterval = 8) {
+    /// `executableURL` names one launcher to use instead of searching (tests, troubleshooting).
+    public init(executableURL: URL? = nil, timeout: TimeInterval = 12) {
         self.executableURL = executableURL
         self.timeout = max(2, timeout)
     }
@@ -18,17 +18,13 @@ public struct CodexConnector: UsageConnector, Sendable {
     }
 
     private func refreshBlocking() throws -> UsageSnapshot {
-        guard let executableURL else {
-            throw ConnectorError.unavailable("ChatGPT is not installed. Install the ChatGPT desktop app and sign in.")
-        }
-        guard Self.isExpectedOpenAIExecutable(executableURL) else {
-            throw ConnectorError.unavailable("Codex signature check failed. UsageRail runs only Codex signed by OpenAI.")
-        }
+        let codex = CodexExecutable.standard
+        let executable = try executableURL.map { try codex.verified($0) } ?? codex.verifiedURL()
 
         let process = Process()
         let standardInput = Pipe()
         let standardOutput = Pipe()
-        process.executableURL = executableURL
+        process.executableURL = executable
         process.arguments = ["app-server", "--stdio"]
         process.standardInput = standardInput
         process.standardOutput = standardOutput
@@ -65,7 +61,9 @@ public struct CodexConnector: UsageConnector, Sendable {
             ]
         ], to: standardInput.fileHandleForWriting)
 
-        let initializeBudget = min(2.5, timeout / 2)
+        // A freshly installed or updated codex can take a few seconds to start the first time
+        // while macOS assesses it; a normal start answers in about a second.
+        let initializeBudget = min(6, timeout / 2)
         guard accumulator.wait(for: 1, timeout: initializeBudget) else {
             if accumulator.exceededLimit { throw ConnectorError.outputTooLarge }
             throw ConnectorError.timedOut
@@ -112,73 +110,6 @@ public struct CodexConnector: UsageConnector, Sendable {
         }
         return .malformedResponse(message)
     }
-
-    /// The Codex binary inside the ChatGPT desktop app, in /Applications or ~/Applications.
-    public static let trustedPaths = [
-        "/Applications/ChatGPT.app/Contents/Resources/codex",
-        FileManager.default.homeDirectoryForCurrentUser.path + "/Applications/ChatGPT.app/Contents/Resources/codex"
-    ]
-
-    public static func defaultExecutableURL(fileManager: FileManager = .default) -> URL? {
-        trustedPaths.first { fileManager.isExecutableFile(atPath: $0) }.map { URL(fileURLWithPath: $0) }
-    }
-
-    private static let validatedExecutable = ValidatedExecutable()
-
-    private static func isExpectedOpenAIExecutable(_ url: URL) -> Bool {
-        let trustedPath = url.standardizedFileURL.path
-        guard trustedPaths.contains(trustedPath), url.resolvingSymlinksInPath().path == trustedPath else { return false }
-        // Strict validation hashes the ~230 MB binary (~0.4 s CPU). Do it once per file
-        // identity; any rewrite, replacement or metadata change (ctime) forces it again.
-        let before = ExecutableIdentity(path: trustedPath)
-        if let before, validatedExecutable.contains(before) { return true }
-        guard hasExpectedSignature(url) else { return false }
-        if let before, ExecutableIdentity(path: trustedPath) == before { validatedExecutable.store(before) }
-        return true
-    }
-
-    private static func hasExpectedSignature(_ url: URL) -> Bool {
-        var staticCode: SecStaticCode?
-        guard SecStaticCodeCreateWithPath(url as CFURL, [], &staticCode) == errSecSuccess,
-              let staticCode,
-              SecStaticCodeCheckValidity(staticCode, SecCSFlags(rawValue: kSecCSStrictValidate), nil) == errSecSuccess else {
-            return false
-        }
-        var information: CFDictionary?
-        guard SecCodeCopySigningInformation(staticCode, SecCSFlags(rawValue: kSecCSSigningInformation), &information) == errSecSuccess,
-              let values = information as? [String: Any],
-              let teamIdentifier = values[kSecCodeInfoTeamIdentifier as String] as? String else {
-            return false
-        }
-        return teamIdentifier == "2DC432GLL2"
-    }
-}
-
-/// What identifies one exact file on disk, including its last metadata change.
-struct ExecutableIdentity: Equatable, Sendable {
-    let device: Int32
-    let inode: UInt64
-    let size: Int64
-    let modified: [Int]
-    let changed: [Int]
-
-    init?(path: String) {
-        var info = stat()
-        guard lstat(path, &info) == 0, info.st_mode & S_IFMT == S_IFREG else { return nil }
-        device = info.st_dev
-        inode = info.st_ino
-        size = info.st_size
-        modified = [info.st_mtimespec.tv_sec, info.st_mtimespec.tv_nsec]
-        changed = [info.st_ctimespec.tv_sec, info.st_ctimespec.tv_nsec]
-    }
-}
-
-final class ValidatedExecutable: @unchecked Sendable {
-    private let lock = NSLock()
-    private var identity: ExecutableIdentity?
-
-    func contains(_ candidate: ExecutableIdentity) -> Bool { lock.withLock { identity == candidate } }
-    func store(_ candidate: ExecutableIdentity) { lock.withLock { identity = candidate } }
 }
 
 private final class NDJSONAccumulator: @unchecked Sendable {

@@ -54,7 +54,7 @@ Changes apply immediately. After a setup step, choose **Check now**.
 
 | Provider | What you need | What UsageRail shows |
 |---|---|---|
-| ChatGPT · Codex | The ChatGPT desktop app, signed in | 5-hour and weekly Codex limits, credits, and the number of resets available |
+| ChatGPT · Codex | The ChatGPT desktop app or the Codex CLI, signed in | 5-hour and weekly Codex limits, credits, and the number of resets available |
 | Claude | Claude Code and a Claude plan | 5-hour session, weekly, and per-model or per-product limits, plus which products used the week |
 | GitHub Copilot | A fine-grained token with **Plan: read** | Premium requests this month |
 | Kie | A Kie API key | Credit balance |
@@ -63,10 +63,12 @@ Changes apply immediately. After a setup step, choose **Check now**.
 
 ### ChatGPT · Codex
 
-1. Install the [ChatGPT desktop app](https://chatgpt.com/download).
-2. Sign in with the account you use for Codex.
+Use either one:
 
-That's all. UsageRail finds the app in `/Applications` or `~/Applications`. It asks the app's bundled `codex` for your rate limits, and it runs that binary only after checking it is signed by OpenAI.
+- **The ChatGPT desktop app:** install the [ChatGPT desktop app](https://chatgpt.com/download) and sign in with the account you use for Codex.
+- **The Codex CLI:** install it with `brew install --cask codex` or `npm install -g @openai/codex`, then run `codex login`.
+
+That's all. UsageRail looks for the app in `/Applications` or `~/Applications` first, then for the CLI from Homebrew or npm. It asks `codex` for your rate limits, and it runs a `codex` binary only after checking it is signed by OpenAI (Team ID `2DC432GLL2`).
 
 ### Claude
 
@@ -78,7 +80,7 @@ That's all. UsageRail finds the app in `/Applications` or `~/Applications`. It a
 3. Choose **Copy login command**. Paste it into Terminal and finish signing in to your Claude account in the browser.
 4. Choose **Check now**.
 
-UsageRail looks for Claude Code in `/opt/homebrew/bin`, `/usr/local/bin` and `~/.local/bin`. It runs Claude Code only if Anthropic signed it (Team ID `Q6L2SF6YDW`). Each check sends exactly two read-only control requests, `initialize` and `get_usage`. No prompt, model call, tool or plugin runs. UsageRail never signs in or out for you and never reads Claude's credentials.
+UsageRail looks for Claude Code in `/opt/homebrew/bin`, `/usr/local/bin`, `~/.local/bin` and npm's global folder. It runs Claude Code only if Anthropic signed it (Team ID `Q6L2SF6YDW`). Each check sends exactly two read-only control requests, `initialize` and `get_usage`. No prompt, model call, tool or plugin runs. UsageRail never signs in or out for you and never reads Claude's credentials.
 
 ### GitHub Copilot
 
@@ -133,11 +135,25 @@ Only pinned providers refresh automatically:
 
 - **Network:** UsageRail contacts only the services you connect: `api.github.com`, `api.kie.ai`, `api.runpod.io`, and your custom API hosts. ChatGPT and Claude are read through their own signed apps. There is no telemetry, analytics, auto-update or UsageRail server.
 - **Credentials:** Copilot, Kie, Runpod and custom API tokens are stored in the macOS Keychain under the service `com.usagerail.credentials`. ChatGPT and Claude sign-ins stay with those apps.
-- **Subprocesses:** only the OpenAI-signed `codex` inside ChatGPT.app and Anthropic-signed Claude Code run, always with fixed arguments and bounded output.
+- **Subprocesses:** only OpenAI-signed `codex` (from ChatGPT.app or the Codex CLI) and Anthropic-signed Claude Code run, always with fixed arguments and bounded output.
 - **Settings is inert:** opening Settings or switching panes makes no network request, starts no process and reads no secret.
 - **Local data:**
   - `~/Library/Application Support/UsageRail`: the last readings, the Claude profile path, and the Claude profile if you created it there
   - Preferences in the `com.usagerail.app` domain
+
+## Troubleshooting
+
+To run one real check from Terminal and see the reading or the exact error, run:
+
+```bash
+/Applications/UsageRail.app/Contents/MacOS/UsageRail --check-usage=claude
+```
+
+Replace `claude` with `codex`, `copilot`, `kie` or `runpod` to check another provider. Keys are never printed.
+
+If you have several installs of Codex or Claude Code, add `--executable=/path/to/codex` or `--executable=/path/to/claude` to check a specific one. It still has to be signed by its publisher.
+
+If UsageRail moves, for example from a build folder to `/Applications`, **Launch at login** follows the copy you open.
 
 ## Uninstall
 
