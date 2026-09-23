@@ -105,7 +105,7 @@ Use **Add custom API…** for any service with a documented HTTPS GET endpoint t
 - an optional scale, such as `0.01` for cents
 - an optional token, sent as Bearer or `X-API-Key`
 
-**Test & Add** saves nothing until the endpoint returns a valid number. Redirects, cookies, private-network hosts and HTML pages are refused. The Guides section covers services that can't connect yet. For example, *Grok · xAI API* comes with a prefilled custom API.
+**Test & Add** saves nothing until the endpoint returns a valid number. Redirects, cookies, private-network hosts and HTML pages are refused. The Guides section covers services that can't connect yet. For example, *Grok · xAI API* comes with a prefilled custom API. *Google Flow* has no API, so its guide explains where to see video credits and image limits.
 
 ## Using it
 

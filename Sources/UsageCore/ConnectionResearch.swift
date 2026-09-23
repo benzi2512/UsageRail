@@ -10,10 +10,21 @@ public struct ConnectionResearch: Sendable {
         if name.hasPrefix("Grok") { return "𝕏" }
         if name == "Higgsfield" { return "H" }
         if name == "Arcads" { return "Ar" }
-        return "C"
+        return String(name.prefix(1))
     }
 
     public static let entries: [ConnectionResearch] = [
+        .init(name: "Google Flow", status: "Web subscription · no public credit API",
+              instructions: """
+              Videos use Flow credits. Every account gets 50 credits a day that don't carry over, and Google AI plans add a monthly allowance that refreshes each billing cycle: Plus 200, Pro 1,000, Ultra 10,000 or 25,000. Flow shows a model's cost when you pick it; Veo 3.1 Fast costs 20 credits a video (10 on Ultra) and Veo 3.1 Quality costs 100.
+
+              Images don't cost credits. They have separate limits that rise with your plan. Google doesn't list the numbers and may slow image generation after heavy use in a day.
+
+              To see what's left, click your profile picture at the top right in Flow, or open one.google.com/ai/activity.
+
+              Google doesn't offer an API for Flow credits, so UsageRail can't show them. Tools that read them reuse your Google sign-in from the browser. Never paste cookies or session tokens into UsageRail.
+              """,
+              source: "https://support.google.com/flow/answer/16526234"),
         .init(name: "Higgsfield", status: "Setup research · native connector pending verification",
               instructions: "Higgsfield's official CLI can read account credits; its chat/MCP connection is not automatically shared with UsageRail. The published login is higgsfield auth login, and account status --json reads credits. UsageRail won't launch that CLI until its executable and provenance have been reviewed. No API key or browser cookie should be pasted here. In Higgsfield: avatar → Manage Account → Subscription shows balance; Usage shows credit history. Website credits and Cloud API billing must not be mixed. No automatic install, login, generation or token extraction is performed.",
               source: "https://higgsfield.ai/creator-hub/help-center/integrations/how-do-i-access-higgsfield-via-cli"),

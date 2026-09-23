@@ -328,6 +328,7 @@ public enum ConnectionCatalog {
     }
 
     private static let researchCopy: [String: (summary: String, template: CustomConnectionTemplate?)] = [
+        "Google Flow": ("Flow credits pay for videos; images have separate limits. Google offers no API, so check Flow itself.", nil),
         "Higgsfield": ("Its CLI can read credits, but UsageRail won't run it until that CLI is reviewed.", nil),
         "Arcads": ("Arcads' public API has no balance endpoint yet, so there's nothing safe to connect.", nil),
         "Grok · SuperGrok": ("SuperGrok's shared allowance has no public usage API. Check it in Grok itself.", nil),

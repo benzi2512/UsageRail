@@ -52,7 +52,7 @@ import Testing
 }
 
 @Test func researchEntriesAreNotConnectedProviderIDs() {
-    #expect(ConnectionResearch.entries.count == 5)
+    #expect(ConnectionResearch.entries.count == 6)
     #expect(ConnectionResearch.entries.allSatisfy { URL(string: $0.source)?.scheme == "https" })
     #expect(!ProviderID.allCases.map(\.rawValue).contains("arcads"))
     #expect(ConnectionResearch.entries.first(where: { $0.name == "Arcads" })?.status.hasPrefix("Blocked") == true)

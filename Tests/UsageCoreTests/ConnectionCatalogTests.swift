@@ -62,6 +62,20 @@ private func balance(_ provider: ProviderID, _ amount: Double, unit: BalanceUnit
     }
 }
 
+@Test func googleFlowGuideSeparatesVideoCreditsFromImageLimits() throws {
+    let entry = try #require(ConnectionCatalog.entry(for: .research("Google Flow")))
+    #expect(entry.isGuide && entry.template == nil && !entry.offersResets && entry.credentialLocation == nil)
+    #expect(entry.documentationURL?.absoluteString == "https://support.google.com/flow/answer/16526234")
+    #expect(entry.summary == "Flow credits pay for videos; images have separate limits. Google offers no API, so check Flow itself.")
+    let details = try #require(entry.details)
+    #expect(details.hasPrefix("Videos use Flow credits."))
+    #expect(details.contains("\n\nImages don't cost credits."))
+    #expect(details.contains("Never paste cookies or session tokens"))
+    // Listed first among the guides that follow Google Gemini.
+    #expect(ConnectionResearch.entries.first?.name == "Google Flow")
+    #expect(ConnectionResearch.entries.first?.iconText == "G")
+}
+
 @Test func sidebarSectionsGroupEveryProviderExactlyOnce() throws {
     let working = try #require(ProviderID.custom(name: "Working API"))
     let failing = try #require(ProviderID.custom(name: "Failing API"))

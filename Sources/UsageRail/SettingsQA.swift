@@ -674,6 +674,9 @@ extension SettingsWindowController {
             }),
             (.entry(.research("Grok · xAI API")), "custom-template", {
                 (controller.currentPane as? GuideSettingsPane)?.templateButton?.performClick(nil)
+            }),
+            (.entry(.research("Google Flow")), "guide-flow-more", {
+                (controller.currentPane as? GuideSettingsPane)?.more?.setExpanded(true)
             })
         ]
         for (pane, name, prepare) in variants {

@@ -32,6 +32,7 @@ enum ProviderIconArtwork {
         if name.hasPrefix("cursor") { return cursorMark }
         if name.hasPrefix("arcads") { return arcadsMark }
         if name.hasPrefix("higgsfield") { return higgsfieldMark }
+        if name.hasPrefix("google flow") { return googleFlowMark }
         return nil
     }
 
@@ -45,6 +46,13 @@ enum ProviderIconArtwork {
     }()
     // Arcads' homepage links this 48x48 PNG favicon on its Webflow CDN (493 bytes).
     private static let arcadsMark = NSImage(data: Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAGCSURBVHgB7ZjRrUVAEIbn3NwCTglKoQMdoAI6QAdUgEroQAl0QAd7d5Lr1QxmLcl+yXk6k+x867eGDwAoeDE/8HKcgG2cgG2cgG2cgG1eL/ALhgnDEL7fL1nXti2cRZn6eZ6nOBRFcWUdcwLTNJHNY83Fdcw0n+e54oBX6XEC3OhUVSWxnrzAOI5k8xgdfXM/TyBNU8XB932pNeWax+gsy0I23zSN5KbJCeiznGweoyNw48oLxHGsOERRJNm8jADuKOfMF46OnICl6MgIWIzOdYGj0cGZZ48zM9GlcVovCFpit2aeZyjLEkxxWkBHB3QsyDqURAlTnBLA+V4Pa2TdMAzQdR2Y5JQANk9FZ11XSJIETHNYQM8wkGUZWVfXtdHobBwW0CcKWYONY/bv4JAAJzpIEARwF2wBbJyzq3hk3hGdDbZA3/dkzZ3R2WAJPDE6G6TAU6OzQX7YwubxgbQHnvkcSf22tiuJ/x/lA/8T3VtxH3dt4wRs4wRs4wRs4wRs8wcg9U9BQjgrGQAAAABJRU5ErkJggg==") ?? Data())
+    // Flow's light-mode favicon on gstatic.com (653x524 PNG), fitted into a 64 px square.
+    // It is black on transparent, so as a template it follows light and dark mode.
+    private static let googleFlowMark: NSImage? = {
+        guard let data = Data(base64Encoded: "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"), let image = NSImage(data: data) else { return nil }
+        image.isTemplate = true
+        return image
+    }()
 
     /// Local identifying wordmarks; never download or execute a website's favicon/SVG.
     static func monogram(_ text: String) -> NSImage {
